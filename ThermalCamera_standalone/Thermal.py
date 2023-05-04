@@ -22,46 +22,33 @@ from socket_server import *
 import json
 
 
+
+#from action import thermal_is384
+thermal_is384 = 0
+
+root_path = "\\home\\dnascript\\Desktop\\thermal-monitor"
+#root_path="Thermal_Camera"
+
 class ThermalImageThread:
 
-    def __init__(self, mainFrame):
-
-        """Parameters"""
-        self.is_384 = 0                     #format of the plate
-        self.OS = "Windows"                  # Ubuntu or Windows
-        self.camera_type = "Xi400"          # so far only Xi400
-        self.automatic_detection = 2        # 0 for no detection, 1 for image processing, 2 for fixed pixels
-        self.flip_vertically = 1            # mirror through vertical axis
-        self.flip_horizontally = 0          # mirror through horizontal axis
-        self.zoom = 1.2                     # Zoom factor, used only for display of UI
-        self.delay = 0.05                   # refresh of thermal images
-        self.cm = plt.get_cmap('seismic')   # Color map
-
-        # delay between the reception of the snapshot order and the actual snapshot,
-        # based on substring in the step name, in second
-
-        self.delay_snapshots = {
-            "_dispense": 10,
-            "_incubation": 0,
-            "_evacuation": 0
-        }
-
-        """--------------"""
-
-        if self.OS=="Ubuntu":
-            self.root_path = "\\home\\dnascript\\Desktop\\thermal-monitor"
-        elif self.OS=="Windows":
-            self.root_path = "Thermal_Camera"
-
+    def __init__(self, mainFrame, camera_type, is_384, automatic_detection, OS, IMAGE_FLIP_VERTICALLY, IMAGE_FLIP_HORIZONTALLY):
+        self.thermal_is384 = is_384                     #format of the plate
+        self.automatic_detection=automatic_detection    #Do we use image processing to find wells
+        self.OS=OS                                         #Which OS we're on
+        self.flip_vertically=IMAGE_FLIP_VERTICALLY
+        self.flip_horizontally=IMAGE_FLIP_HORIZONTALLY
 
         self.cm = plt.get_cmap('seismic')               #Color map
+        self.zoom = 1.2                                  #Zoom factor, useful only for display of UI
 
-        if self.camera_type=='Xi400':
+        if camera_type=='Xi400':
             self.width = 382
             self.height = 288
         else:
             raise Exception("Camera type unknown.")
 
+        # refresh of thermal images
+        self.delay = 0.05
 
         """Initialize connection with the camera"""
         self.o = Optris()
@@ -79,7 +66,7 @@ class ThermalImageThread:
             now.month) + force2digits(now.day) + '_' + force2digits(now.hour) + force2digits(now.minute) + force2digits(
             now.second) + "_"
 
-        if self.OS=="Ubuntu":
+        if OS=="Ubuntu":
             self.socket_server=Pipe_Syntax("/tmp/thermal-monitor")
         else:
             self.socket_server = Pipe()
@@ -87,7 +74,7 @@ class ThermalImageThread:
 
 
 
-        if self.is_384:
+        if self.thermal_is384:
             protoTF = 305
             self.letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']
         else:
@@ -157,15 +144,14 @@ class ThermalImageThread:
                 [to_snap,exp,cycle,step]=self.socket_server.data
                 self.socket_server.received=b""
                 self.socket_server.data=[]
-
-            if int(to_snap)==1:
-                self.snapshot_in_cycle(1,self.snapshot_folder + exp.replace("\"",""),int(cycle),step.replace("\"",""))
+                if int(to_snap)==1:
+                    self.snapshot_in_cycle(1,self.snapshot_folder + exp.replace("\"",""),int(cycle),step.replace("\"",""))
 
             sleep(self.delay)
 
 
     def snapshot_in_cycle(self,thermalImages,folder_path,cycle,step):
-
+        #try:
             #if thermalImages are not active, we return
             if thermalImages==0 :
                 return
@@ -174,25 +160,20 @@ class ThermalImageThread:
             #if (folder_path[len(folder_path) - 4:] == "test"):
             #    return
 
-            #we eventually delay the capture
-            for key in self.delay_snapshots:
-                if key in step:
-                    self.pause(self.delay_snapshots[key])
-                    break
             sleep(0.3)
 
             now = datetime.datetime.now()
 
-            final_path = self.root_path + "\\" + folder_path + "\\" + str(cycle) + "\\" + str(now.year) + force2digits(
+            final_path = root_path + "\\" + folder_path + "\\" + str(cycle) + "\\" + str(now.year) + force2digits(
                 now.month) + force2digits(now.day) + '_' + force2digits(now.hour) + force2digits(now.minute) + force2digits(
                 now.second) + '_C' + str(cycle) + '_' + step
 
             if self.OS=="Ubuntu":
                 final_path=final_path.replace("\\","/")
-                os.makedirs((self.root_path + "\\" + folder_path + "\\" + str(cycle)).replace("\\","/"), exist_ok=True)
+                os.makedirs((root_path + "\\" + folder_path + "\\" + str(cycle)).replace("\\","/"), exist_ok=True)
                 imageio.imwrite((final_path + ".png"), self.img_to_display)
             else:
-                os.makedirs(self.root_path + "\\" + folder_path + "\\" + str(cycle), exist_ok=True)
+                os.makedirs(root_path + "\\" + folder_path + "\\" + str(cycle), exist_ok=True)
                 imageio.imwrite((final_path + ".png"), self.img_to_display)
             np.savetxt(final_path + ".csv", self.thermalFrame, delimiter=';', fmt='%.2f')
             #imageio.imwrite(final_path + "_detection.png", self.img_to_display)
@@ -207,7 +188,7 @@ class ThermalImageThread:
         # Coordinates on image(with zoom), [x,y]
 
         # import config of the coordinates of the extremities, saved in a file
-        if self.is_384:
+        if self.thermal_is384:
             with open("fixed_thermal_config-384.json", 'r') as f:
                 config = json.load(f)
         else:
@@ -219,7 +200,7 @@ class ThermalImageThread:
         top_right = [config["top_right"]["X"], config["top_right"]["Y"]]
         bottom_right = [config["bottom_right"]["X"], config["bottom_right"]["Y"]]
 
-        self.wells = return_coordinates([top_left, bottom_left, top_right, bottom_right], self.is_384) #wells are in a dictionnary, value is [coordx,coordy]
+        self.wells = return_coordinates([top_left, bottom_left, top_right, bottom_right], self.thermal_is384) #wells are in a dictionnary, value is [coordx,coordy]
         wells_temp = {}
         for well,coord in self.wells.items():
             wells_temp[well]=self.thermalFrame[int(coord[1]/self.zoom)][int(coord[0]/self.zoom)]
@@ -279,7 +260,7 @@ class ThermalImageThread:
     def generate_temperature_table_fixed_pixel(self, final_path):
 
         temp_list=[]
-        if self.is_384==0:
+        if self.thermal_is384==0:
             nb_columns=12
             nb_rows=8
         else:
@@ -339,13 +320,6 @@ class ThermalImageThread:
                 except:
                     pass
         self.mainFrame.tempmeanLabel.configure(text="Mean temperature " + "%.1f" % round(np.mean(temperatures), 2) + "°C")
-
-    def pause(self,time_to_pause_for):
-
-        time_to_go_to = time.time() + time_to_pause_for
-        while (time.time() < time_to_go_to):
-            self.mainFrame.parent.update()
-            sleep(0.02)
 
     def mean_temperature_fixed_pixels(self):
 

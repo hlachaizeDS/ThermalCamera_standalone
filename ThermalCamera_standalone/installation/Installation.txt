@@ -1,0 +1,42 @@
+﻿copy the folder to Desktop and unzip it there
+
+If python3 not installed on the device, launch install_python3, to launch in a terminal. 
+
+then cd and run 
+
+1. to install libirimager library
+sudo apt-get install libudev-dev
+sudo apt-get install python3-tk
+sudo dpkg -i libirimager-8.8.5-amd64.deb
+
+2. to download calibration files for the camera (camera needs to be plugged in)
+sudo ir_download_calibration
+
+3. to install dependancies
+
+(eventually if we get error messages :
+python3 -m pip install -U --force-reinstall pip
+pip3 install --upgrade pip setuptools wheel
+pip3 install --upgrade pip)
+
+
+pip3 install opencv-python==4.5.5.64 numpy imageio matplotlib pandas opencv-python-headless==4.6.0.66 Multi-Template-Matching==1.6.3
+
+4.install image viewer, easier for calibration
+sudo apt-get install geeqie
+
+5. To launch the software, launch thermal_camera.sh in installation folder
+
+6. Check that the plate is correctly oriented. You can play on the IMAGE_FLIP_VERTICALLY and IMAGE_FLIP_HORIZONTALLY parameters in GUI.py to get the A1 on the left upper part of the thermal image.
+
+7.Calibrate the pixels:
+ideally with a filterplate heated, take a snapshot manually, by launching
+echo "{\"cycle\":2,\"step\":\"DB_incub\"}" > /tmp/thermal-monitor
+The snapshot will be recorded in thermal_monitor folder on Desktop.
+Open it with geeqie, activate pixel info (Display->Pixel Info) and report the coordinates of the 4 corners of the plate to fixed_thermal_config.json
+Check on the software that the calibration is right
+
+8.If you use 384 format, you can activate it by switching the parameter IS_384 to 1 in GUI.py
+You will need to recalibrate the fixed pixels the same way you did for 96 format, but modifying fixed_thermal_config-384.json instead.
+
+9. Make sure you launch the program before launching your synthesis.

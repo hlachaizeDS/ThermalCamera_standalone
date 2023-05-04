@@ -5,7 +5,7 @@ import socket
 import json
 
 MAX_LENGTH = 4096
-is_384=1
+
 
 class Pipe(Thread):
 
@@ -45,23 +45,12 @@ class Pipe_Syntax(Thread):
         while(1):
             #with open(self.namedPipe_path,'r') as fifo:
             try:
-
                 fifo=open(self.namedPipe_path, 'r')
                 #self.received = fifo.read().strip()
-
-                if is_384:
-                    self.received = fifo.read().strip().split('-')
-                    cycle=self.received[0].split('/')[0].replace('Cycle ','')
-                    if not cycle.isnumeric():
-                        cycle='0'
-                    step = self.received[1] + "_" + self.received[2]
-                    self.data=[1,"STX_run",cycle,step]
-
-                else:
-                    self.received = fifo.read().strip().split('\n')[-1] #sometimes two json were passed to the named pipe, had to take the last one
-                    print(self.received)
-                    data_json=json.loads(self.received)
-                    self.data=[1,"STX_run",data_json['cycle'],data_json['step']] #[to_snap,exp,cycle,step]
+                self.received = fifo.read().strip().split('\n')[-1] #sometimes two json were passed to the named pipe, had to take the last one
+                print(self.received)
+                data_json=json.loads(self.received)
+                self.data=[1,"STX_run",data_json['cycle'],data_json['step']] #[to_snap,exp,cycle,step]
             except:
                 print("Couldn't take snapshot...")
 
