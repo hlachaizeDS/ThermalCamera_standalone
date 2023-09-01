@@ -1,7 +1,7 @@
 """
 This module handles extracting well temperatures from Optris images
 """
-from Optris.Optris import *
+from Optris import *
 import numpy as np
 #import imageio
 from pathlib import Path
@@ -28,23 +28,16 @@ class ThermalImageThread:
 
         """Parameters"""
         self.is_384 = 0                     #format of the plate
-        self.OS = "Windows"                  # Ubuntu or Windows
+        self.OS = "Proto"                 # Ubuntu(named_pipe), Windows (communication via bat) or Proto
         self.camera_type = "Xi400"          # so far only Xi400
         self.automatic_detection = 2        # 0 for no detection, 1 for image processing, 2 for fixed pixels
-        self.flip_vertically = 1            # mirror through vertical axis
+        self.flip_vertically = 0            # mirror through vertical axis
         self.flip_horizontally = 0          # mirror through horizontal axis
         self.zoom = 1.2                     # Zoom factor, used only for display of UI
         self.delay = 0.05                   # refresh of thermal images
         self.cm = plt.get_cmap('seismic')   # Color map
 
-        # delay between the reception of the snapshot order and the actual snapshot,
-        # based on substring in the step name, in second
 
-        self.delay_snapshots = {
-            "_dispense": 10,
-            "_incubation": 0,
-            "_evacuation": 0
-        }
 
         """--------------"""
 
@@ -52,6 +45,8 @@ class ThermalImageThread:
             self.root_path = "\\home\\dnascript\\Desktop\\thermal-monitor"
         elif self.OS=="Windows":
             self.root_path = "Thermal_Camera"
+        elif self.OS=="Proto":
+            self.root_path = "C:\\Users\\SynthesisDNASCRIPT\\Desktop\\Proto7\\Thermal_Camera"
 
 
         self.cm = plt.get_cmap('seismic')               #Color map
@@ -81,9 +76,10 @@ class ThermalImageThread:
 
         if self.OS=="Ubuntu":
             self.socket_server=Pipe_Syntax("/tmp/thermal-monitor")
-        else:
+            self.socket_server.start()
+        elif self.OS == "Windows":
             self.socket_server = Pipe()
-        self.socket_server.start()
+            self.socket_server.start()
 
 
 
@@ -107,52 +103,52 @@ class ThermalImageThread:
 
         # start a thread that constantly pools the video sensor for
         # the most recently read frame
-        self.thread = threading.Thread(target=self.in_video_loop, daemon=True)
+        self.thread = threading.Thread(target=self.videoLoop, daemon=True)
         self.thread.start()
 
     def in_video_loop(self):
 
-        while True:
-            self.thermalFrame = self.o.img()
-            if self.flip_vertically:
-                self.thermalFrame=np.fliplr(self.thermalFrame)
-            if self.flip_horizontally:
-                self.thermalFrame=np.flipud(self.thermalFrame)
+        self.thermalFrame = self.o.img()
+        if self.flip_vertically:
+            self.thermalFrame=np.fliplr(self.thermalFrame)
+        if self.flip_horizontally:
+            self.thermalFrame=np.flipud(self.thermalFrame)
 
-            frame = self.thermalFrame
-            frame = (frame - frame.min()) * (60.0 / (frame.max() - frame.min()))
-            frame = Optris.C_to_uint8(self.o, frame)
+        frame = self.thermalFrame
+        frame = (frame - frame.min()) * (60.0 / (frame.max() - frame.min()))
+        frame = Optris.C_to_uint8(self.o, frame)
 
-            frame=self.cm(frame)
-            frame = Image.fromarray((frame[:, :, :3] * 255).astype(np.uint8)).resize((int(self.width * self.zoom), int(self.height * self.zoom)))
-            self.topng = frame
+        frame=self.cm(frame)
+        frame = Image.fromarray((frame[:, :, :3] * 255).astype(np.uint8)).resize((int(self.width * self.zoom), int(self.height * self.zoom)))
+        self.topng = frame
 
-            if self.automatic_detection==1:
-                self.mean_temperature_auto()
-            elif self.automatic_detection==2:
-                self.wells_temp=self.get_wells_temp_fixed_pixels()
-                self.mean_temperature_fixed_pixels()
-            else:
-                self.img_to_display=np.array(self.topng)
-            self.frame = ImageTk.PhotoImage(Image.fromarray(self.img_to_display.astype(np.uint8)))
+        if self.automatic_detection==1:
+            self.mean_temperature_auto()
+        elif self.automatic_detection==2:
+            self.wells_temp=self.get_wells_temp_fixed_pixels()
+            self.mean_temperature_fixed_pixels()
+        else:
+            self.img_to_display=np.array(self.topng)
+        self.frame = ImageTk.PhotoImage(Image.fromarray(self.img_to_display.astype(np.uint8)))
 
-            self.mainFrame.ImageLabel.configure(image=self.frame)
-            self.mainFrame.ImageLabel.Image = self.frame
+        self.mainFrame.ImageLabel.configure(image=self.frame)
+        self.mainFrame.ImageLabel.Image = self.frame
 
-            # get coordinates of pointer
+        # get coordinates of pointer
 
-            label_size=[self.mainFrame.ImageLabel.winfo_width(),self.mainFrame.ImageLabel.winfo_height()]
-            image_size=[self.frame.width(),self.frame.height()]
-            x = (self.mainFrame.ImageLabel.winfo_pointerx() - int((1/2)*(label_size[0]-image_size[0])) - self.mainFrame.ImageLabel.winfo_rootx()) / self.zoom
-            y = (self.mainFrame.ImageLabel.winfo_pointery() - int((1/2)*(label_size[1]-image_size[1])) - self.mainFrame.ImageLabel.winfo_rooty()) / self.zoom
+        label_size=[self.mainFrame.ImageLabel.winfo_width(),self.mainFrame.ImageLabel.winfo_height()]
+        image_size=[self.frame.width(),self.frame.height()]
+        x = (self.mainFrame.ImageLabel.winfo_pointerx() - int((1/2)*(label_size[0]-image_size[0])) - self.mainFrame.ImageLabel.winfo_rootx()) / self.zoom
+        y = (self.mainFrame.ImageLabel.winfo_pointery() - int((1/2)*(label_size[1]-image_size[1])) - self.mainFrame.ImageLabel.winfo_rooty()) / self.zoom
 
-            if x < self.width and x > -1:
-                if y < self.height and y > -1:
-                    self.mainFrame.tempLabel.configure(
-                        text=str("%.1f" % self.mainFrame.thermalThread.thermalFrame[int(y)][int(x)]) + "°C")
+        if x < self.width and x > -1:
+            if y < self.height and y > -1:
+                self.mainFrame.tempLabel.configure(
+                    text=str("%.1f" % self.mainFrame.thermalThread.thermalFrame[int(y)][int(x)]) + "°C")
 
-            self.mainFrame.update()
+        self.mainFrame.update()
 
+        if self.OS in ['Ubuntu','Windows']:
             if self.socket_server.data!=[]:
                 [to_snap,exp,cycle,step]=self.socket_server.data
                 self.socket_server.received=b""
@@ -161,8 +157,15 @@ class ThermalImageThread:
             if int(to_snap)==1:
                 self.snapshot_in_cycle(1,self.snapshot_folder + exp.replace("\"",""),int(cycle),step.replace("\"",""))
 
-            sleep(self.delay)
+        sleep(self.delay)
 
+    def videoLoop(self):
+        while(1):
+            try:
+                self.in_video_loop()
+            except Exception as e:
+                print('Couldnt update frame')
+                print(e)
 
     def snapshot_in_cycle(self,thermalImages,folder_path,cycle,step):
 
@@ -174,12 +177,8 @@ class ThermalImageThread:
             #if (folder_path[len(folder_path) - 4:] == "test"):
             #    return
 
-            #we eventually delay the capture
-            for key in self.delay_snapshots:
-                if key in step:
-                    self.pause(self.delay_snapshots[key])
-                    break
             sleep(0.3)
+            self.in_video_loop()
 
             now = datetime.datetime.now()
 
@@ -357,6 +356,17 @@ class ThermalImageThread:
             temperatures.append(temp)
 
         self.mainFrame.tempmeanLabel.configure(text="Mean temperature " + "%.1f" % round(np.mean(temperatures), 2) + "°C")
+
+class FakeThermalImageThread:
+
+    def __init__(self):
+        # store the video stream object and output path, then initialize
+        # the most recently read frame, thread for reading frames, and
+        # the thread stop event
+        variable='just to have a variable'
+
+    def snapshot_in_cycle(self, thermalImages, folder_path, cycle, step):
+        variable='snap'
 
 def force2digits(number):
     if number<10:
