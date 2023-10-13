@@ -1,7 +1,8 @@
 """
 This module handles extracting well temperatures from Optris images
 """
-from Optris import *
+from Optris.Optris import *
+
 import numpy as np
 #import imageio
 from pathlib import Path
@@ -17,7 +18,7 @@ from time import *
 import cv2 as cv
 import pandas as pd
 import pickle
-from MTM import matchTemplates
+#from MTM import matchTemplates
 from socket_server import *
 import json
 
@@ -28,7 +29,7 @@ class ThermalImageThread:
 
         """Parameters"""
         self.is_384 = 0                     #format of the plate
-        self.OS = "Proto"                 # Ubuntu(named_pipe), Windows (communication via bat) or Proto
+        self.OS = "Windows"                 # Ubuntu(named_pipe), Windows (communication via bat) or Proto
         self.camera_type = "Xi400"          # so far only Xi400
         self.automatic_detection = 2        # 0 for no detection, 1 for image processing, 2 for fixed pixels
         self.flip_vertically = 0            # mirror through vertical axis
@@ -37,7 +38,11 @@ class ThermalImageThread:
         self.delay = 0.05                   # refresh of thermal images
         self.cm = plt.get_cmap('seismic')   # Color map
 
-
+        self.step_delay={                   #Additional delay before getting a snapshot at particular steps
+            "AftIncPremix":2,
+            "BefIncPremix":1,
+            "DBIncub":5
+        }
 
         """--------------"""
 
@@ -154,8 +159,8 @@ class ThermalImageThread:
                 self.socket_server.received=b""
                 self.socket_server.data=[]
 
-            if int(to_snap)==1:
-                self.snapshot_in_cycle(1,self.snapshot_folder + exp.replace("\"",""),int(cycle),step.replace("\"",""))
+                if int(to_snap)==1:
+                    self.snapshot_in_cycle(1,self.snapshot_folder + exp.replace("\"",""),int(cycle),step.replace("\"",""))
 
         sleep(self.delay)
 
@@ -178,6 +183,9 @@ class ThermalImageThread:
             #    return
 
             sleep(0.3)
+            if step in self.step_delay:
+                self.pause(self.step_delay[step])
+
             self.in_video_loop()
 
             now = datetime.datetime.now()
@@ -343,8 +351,8 @@ class ThermalImageThread:
 
         time_to_go_to = time.time() + time_to_pause_for
         while (time.time() < time_to_go_to):
+            self.in_video_loop()
             self.mainFrame.parent.update()
-            sleep(0.02)
 
     def mean_temperature_fixed_pixels(self):
 

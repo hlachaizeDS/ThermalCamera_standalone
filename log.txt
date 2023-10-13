@@ -1,2 +1,2 @@
-C:\Users\HL\PycharmProjects\ThermalCamera_standalone\Optris\generic.xml
+C:\Users\HenriLACHAIZE\PycharmProjects\ThermalCamera_standalone\Optris\generic.xml
 1
