@@ -39,8 +39,6 @@ class ThermalImageThread:
         self.cm = plt.get_cmap('seismic')   # Color map
 
         self.step_delay={                   #Additional delay before getting a snapshot at particular steps
-            "AftIncPremix":2,
-            "BefIncPremix":1,
             "DBIncub":5
         }
 

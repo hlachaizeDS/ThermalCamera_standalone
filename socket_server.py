@@ -28,7 +28,7 @@ class Pipe(Thread):
             buf = clientsocket.recv(MAX_LENGTH)
             if buf != b'':
                 self.received=buf
-                self.data = self.received.decode("utf-8").split(",") #[to_snap,exp,cycle,step]
+                self.data = self.received.decode("utf-8").split(";") #[to_snap,exp,cycle,step]
             time.sleep(0.05)
 
 class Pipe_Syntax(Thread):
