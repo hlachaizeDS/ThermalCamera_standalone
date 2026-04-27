@@ -5,7 +5,6 @@ import socket
 import json
 
 MAX_LENGTH = 4096
-is_384=1
 
 class Pipe(Thread):
 
@@ -41,39 +40,43 @@ class Pipe_Syntax(Thread):
         self.data=[]
         if (not os.path.exists(self.namedPipe_path)):
             os.mkfifo(self.namedPipe_path)
+        self.run_name = "no_run_name"
 
     def run(self):
-        self.run_name = "test_nofull"
-        with open(self.namedPipe_path,'r') as fifo:
-            try:
-                if is_384:
-                    print("384 run")
-                    self.run_name = fifo.read().strip().replace(" ", "_").replace("/", "-")
-            except Exception as e:
-                print("Couldn't take snapshot...", e)
-
-        print("Run: ", self.run_name)
 
         while(1):
+
             with open(self.namedPipe_path,'r') as fifo:
                 try:
-                    if is_384:
-                        self.received = fifo.read().strip().split('-')
-                        print(self.received)
-                        cycle=self.received[0].split('/')[0].replace('Cycle ','')
-                        if not cycle.isnumeric():
-                            cycle='0'
-                        step = self.received[1].replace('/', '_') + "_" + self.received[2]
-                        print(step)
-                        self.data=[1,self.run_name,cycle,step]
+                    # We retrieve the message sent by the Syntax, and split it by " - "
+                    self.received = fifo.read().strip().split(' - ')
+
+                    # If it is a snapshot request, the command contains two ' - ', else it should be the run name
+                    if len(self.received) != 3:
+
+                        # If it's a run name, we clean the elements that could mess up the path of the folder
+                        self.run_name = self.received[0].replace(" ", "_").replace("/", "-")
+                        print("Run: ", self.run_name)
+
                     else:
-                        self.received = fifo.read().strip().split('\n')[-1] #sometimes two json were passed to the named pipe, had to take the last one
+
                         print(self.received)
-                        data_json=json.loads(self.received)
-                        self.data=[1,"STX_run",data_json['cycle'],data_json['step']] #[to_snap,exp,cycle,step]
+
+                        cycle=self.received[0].split('/')[0].replace('Cycle ','')
+
+                        if not cycle.isnumeric():
+                            cycle = '0'
+
+                        step = self.received[1].replace('/', '_') + "_" + self.received[2]
+
+                        print(step)
+
+                        self.data = [1,self.run_name,cycle,step]  # [to_snap,exp,cycle,step]
+
                 except Exception as e:
                     print("Couldn't take snapshot...", e)
 
 if __name__ == "__main__":
+
     pipe_server=Pipe_Syntax("/tmp/thermal-monitor")
     pipe_server.start()
