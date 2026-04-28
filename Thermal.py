@@ -28,8 +28,8 @@ class ThermalImageThread:
     def __init__(self, mainFrame):
 
         """Parameters"""
-        self.is_384 = 0                     #format of the plate
-        self.OS = "Windows"                 # Ubuntu(named_pipe), Windows (communication via bat) or Proto
+        self.is_384 = 1                     #format of the plate
+        self.OS = "Ubuntu"                 # Ubuntu(named_pipe), Windows (communication via bat) or Proto
         self.camera_type = "Xi400"          # so far only Xi400
         self.automatic_detection = 2        # 0 for no detection, 1 for image processing, 2 for fixed pixels
         self.flip_vertically = 0            # mirror through vertical axis

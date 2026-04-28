@@ -71,6 +71,6 @@ cd ~/Desktop/ThermalCamera_standalone
 git config pull.rebase false # to specify to merge the pull request, probably need to be specified once
 git pull https://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@github.com/hlachaizeDS/ThermalCamera_standalone.git
 
-If you get a fatal error due to unrelated histories, run
+
 
 
