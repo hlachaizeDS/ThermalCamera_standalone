@@ -1,7 +1,7 @@
 ﻿To get if from Git, use
 cd ~/Desktop
-git clone https://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@github.com/hlachaizeDS/ThermalCamera_standalone.git
-
+git clone https://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@github.com/hlachaizeDS/ThermalCamera_standalone.git
+(the part before @github.com is a personal access token, must have at list repo privilege)
 
 If python3 not installed on the device, launch install_python3, to launch in a terminal. 
 
